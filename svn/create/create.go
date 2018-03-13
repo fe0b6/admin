@@ -61,7 +61,7 @@ func main() {
 		log.Fatalln("[error]", err)
 	}
 
-	err = os.Link(hookPath, repoPath+"/hooks/pre-commit")
+	err = os.Symlink(hookPath, repoPath+"/hooks/pre-commit")
 	if err != nil {
 		log.Fatalln("[error]", err)
 	}

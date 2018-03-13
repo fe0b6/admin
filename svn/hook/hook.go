@@ -94,6 +94,11 @@ func init() {
 	cssReg = regexp.MustCompile(".css$")
 
 	movedFiles = []string{}
+
+	err = os.Setenv("GOPATH", "/www/go")
+	if err != nil {
+		log.Fatalln("[error]", err)
+	}
 }
 
 func main() {
@@ -129,8 +134,6 @@ func createRepo(name string) {
 	if err != nil {
 		return
 	}
-
-	log.Println("config read")
 
 	err = json.Unmarshal(b, &usedRepo)
 	if err != nil {
@@ -227,11 +230,12 @@ func changes() {
 				log.Println("[error]", err)
 				exit(2)
 			}
+
+			chown(fpath + gp)
 		}
 	}
 
 	cleanTmp()
-
 }
 
 func add(path string, isPath bool) {
