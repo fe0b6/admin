@@ -1,0 +1,11 @@
+{
+  "svnlook": "/usr/bin/svnlook",
+  "path": "/www/sites/",
+  "debug": "",
+  "user_id": 1000,
+  "group_id": 33,
+  "yate": "/usr/local/bin/yate",
+  "compress": "/usr/bin/yui-compressor",
+  "go": "/usr/local/go/bin/go",
+  "repos": []
+}

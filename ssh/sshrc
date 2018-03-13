@@ -1,0 +1,20 @@
+#!/bin/sh
+
+HOSTNAME=""
+TG_TOKEN=""
+EMAIL=""
+TGID=""
+
+send_tg() {
+  wget https://api.telegram.org/bot$TG_TOKEN/sendMessage -q -O /dev/null --post-data="chat_id=$1&text=$2" 
+}
+
+send_mail() {
+  mail -s "ssh login $HOSTNAME" $1 <<EOF
+  User: $USER
+  Connect: $SSH_CLIENT
+EOF
+}
+
+send_tg $TGID "$HOSTNAME ssh login: $USER, $SSH_CLIENT"
+send_mail $EMAIL
