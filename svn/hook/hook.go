@@ -9,18 +9,21 @@ import (
 	"os/exec"
 	"regexp"
 	"strings"
+
+	"github.com/tdewolff/minify"
+	"github.com/tdewolff/minify/css"
+	"github.com/tdewolff/minify/js"
 )
 
 type config struct {
-	SVNLook  string `json:"svnlook"`
-	Path     string `json:"path"`
-	Debug    string `json:"debug"`
-	UserID   int    `json:"user_id"`
-	GroupID  int    `json:"group_id"`
-	Repos    []repo `json:"repos"`
-	Yate     string `json:"yate"`
-	Go       string `json:"go"`
-	Compress string `json:"compress"`
+	SVNLook string `json:"svnlook"`
+	Path    string `json:"path"`
+	Debug   string `json:"debug"`
+	UserID  int    `json:"user_id"`
+	GroupID int    `json:"group_id"`
+	Repos   []repo `json:"repos"`
+	Yate    string `json:"yate"`
+	Go      string `json:"go"`
 }
 
 type repo struct {
@@ -30,6 +33,8 @@ type repo struct {
 	YateCompress bool     `json:"yate_compress"`
 	Go           []string `json:"go"`
 	GoPath       string   `json:"go_path"`
+	JSCompress   bool     `json:"js_compress"`
+	CSSCompress  bool     `json:"css_compress"`
 }
 
 const confPath = "/www/svn/core/conf.json"
@@ -43,6 +48,7 @@ var (
 	yateReg *regexp.Regexp
 	goReg   *regexp.Regexp
 	jsReg   *regexp.Regexp
+	cssReg  *regexp.Regexp
 
 	movedFiles []string
 
@@ -85,6 +91,7 @@ func init() {
 	yateReg = regexp.MustCompile(".yate$")
 	goReg = regexp.MustCompile(".go$")
 	jsReg = regexp.MustCompile(".js$")
+	cssReg = regexp.MustCompile(".css$")
 
 	movedFiles = []string{}
 }
@@ -198,7 +205,7 @@ func changes() {
 
 			// Если надо сжать
 			if usedRepo.YateCompress {
-				compressJs(jstmpl)
+				compressJS(jstmpl, "")
 			}
 		}
 	}
@@ -275,8 +282,10 @@ func add(path string, isPath bool) {
 }
 
 func modify(fullpath, data string) {
-	if jsReg.MatchString(fullpath) && !strings.Contains(data, "/* NO COMPRESS */") {
-		compressJs(fullpath)
+	if usedRepo.JSCompress && jsReg.MatchString(fullpath) && !strings.Contains(data, "/* NO COMPRESS */") {
+		compressJS(fullpath, data)
+	} else if usedRepo.CSSCompress && cssReg.MatchString(fullpath) && !strings.Contains(data, "/* NO COMPRESS */") {
+		compressCSS(fullpath, data)
 	}
 }
 
@@ -292,15 +301,56 @@ func del(path string) {
 	}
 }
 
-func compressJs(fullpath string) {
-	cmd := exec.Command(conf.Compress, "--charset", "utf-8", fullpath)
-	b, err := cmd.CombinedOutput()
+func compressJS(fullpath, data string) {
+	m := minify.New()
+	m.AddFunc("text/javascript", js.Minify)
+
+	if data == "" {
+		b, err := ioutil.ReadFile(fullpath)
+		if err != nil {
+			log.Println("[error]", err)
+			exit(2)
+		}
+
+		data = string(b)
+	}
+
+	data, err := m.String("text/javascript", data)
 	if err != nil {
 		log.Println("[error]", err)
 		exit(2)
 	}
 
-	err = ioutil.WriteFile(fullpath, b, 0640)
+	err = ioutil.WriteFile(fullpath, []byte(data), 0640)
+	if err != nil {
+		log.Println("[error]", err)
+		exit(2)
+	}
+
+	chown(fullpath)
+}
+
+func compressCSS(fullpath string, data string) {
+	m := minify.New()
+	m.AddFunc("text/css", css.Minify)
+
+	if data == "" {
+		b, err := ioutil.ReadFile(fullpath)
+		if err != nil {
+			log.Println("[error]", err)
+			exit(2)
+		}
+
+		data = string(b)
+	}
+
+	data, err := m.String("text/css", data)
+	if err != nil {
+		log.Println("[error]", err)
+		exit(2)
+	}
+
+	err = ioutil.WriteFile(fullpath, []byte(data), 0640)
 	if err != nil {
 		log.Println("[error]", err)
 		exit(2)
