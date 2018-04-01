@@ -257,15 +257,7 @@ func add(path string, isPath bool) {
 		return
 	}
 
-	// Читаем файл, args[2] - номер транзакции, args[1] - репозитарий
-	cmd := exec.Command(conf.SVNLook, "cat", "-t", args[2], args[1], path)
-	b, err := cmd.CombinedOutput()
-	if err != nil {
-		log.Println("[error]", err)
-		exit(2)
-	}
-
-	err = os.Rename(fullpath, fullpath+".svntmp")
+	err := os.Rename(fullpath, fullpath+".svntmp")
 	if err != nil && !strings.Contains(err.Error(), "no such file or directory") {
 		log.Println("[error]", err)
 		exit(2)
@@ -274,29 +266,51 @@ func add(path string, isPath bool) {
 		movedFiles = append(movedFiles, fullpath)
 	}
 
-	err = ioutil.WriteFile(fullpath, b, 0640)
+	f, err := os.OpenFile(fullpath, os.O_RDWR|os.O_CREATE, 0640)
 	if err != nil {
 		log.Println("[error]", err)
 		exit(2)
 	}
 
+	// Читаем файл, args[2] - номер транзакции, args[1] - репозитарий
+	cmd := exec.Command(conf.SVNLook, "cat", "-t", args[2], args[1], path)
+	cmd.Stdout = f
+	err = cmd.Run()
+	if err != nil {
+		log.Println("[error]", err)
+		f.Close()
+		exit(2)
+	}
+
+	f.Close()
+
 	chown(fullpath)
 
-	modify(fullpath, string(b))
+	modify(fullpath)
 }
 
-func modify(fullpath, data string) {
-	if usedRepo.JSCompress && jsReg.MatchString(fullpath) && !strings.Contains(data, "/* NO COMPRESS */") {
-		compressJS(fullpath, data)
-	} else if usedRepo.CSSCompress && cssReg.MatchString(fullpath) && !strings.Contains(data, "/* NO COMPRESS */") {
-		compressCSS(fullpath, data)
+func modify(fullpath string) {
+	if (usedRepo.JSCompress && jsReg.MatchString(fullpath)) || (usedRepo.CSSCompress && cssReg.MatchString(fullpath)) {
+		b, err := ioutil.ReadFile(fullpath)
+		if err != nil {
+			log.Println("[error]", err)
+			exit(2)
+		}
+
+		if strings.Contains(string(b), "/* NO COMPRESS */") {
+			return
+		}
+
+		if jsReg.MatchString(fullpath) {
+			compressJS(fullpath, string(b))
+		} else if cssReg.MatchString(fullpath) {
+			compressCSS(fullpath, string(b))
+		}
 	}
 }
 
 func del(path string) {
 	fullpath := usedRepo.getPath(path)
-
-	log.Println(fullpath)
 
 	err := os.RemoveAll(fullpath)
 	if err != nil {
