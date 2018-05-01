@@ -1,6 +1,6 @@
 #!/bin/sh
 
-DATE=`date '+%Y-%m-%d_%H:%M:%S'`
+DATE=`date '+%Y-%m-%d_%H-%M-%S'`
 
 USER="root"
 PATH=""
