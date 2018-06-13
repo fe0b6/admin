@@ -16,5 +16,5 @@ send_mail() {
 EOF
 }
 
-send_tg $TGID "$HOSTNAME ssh login: $USER, $SSH_CLIENT"
-send_mail $EMAIL
+send_tg $TGID "$HOSTNAME ssh login: $USER, $SSH_CLIENT" &
+send_mail $EMAIL &
