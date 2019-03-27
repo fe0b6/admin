@@ -1,0 +1,14 @@
+конфиг в /usr/share/pam-configs/login-notify
+nano /usr/share/pam-configs/login-notify
+
+Name: Notification about all login events
+Default: yes
+Priority: 0
+Session-Type: Additional
+Session:
+        optional        pam_exec.so /usr/bin/login-notify
+
+
+потом выполнить pam-auth-update
+
+chmod +x /usr/bin/login-notify

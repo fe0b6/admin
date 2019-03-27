@@ -1,0 +1,36 @@
+#!/bin/sh
+
+TG_API="api.telegram.org"
+TG_TOKEN=""
+EMAIL=""
+TGID=""
+
+
+if test "$PAM_SERVICE" = 'cron'; then
+  exit
+elif test "$PAM_SERVICE" = 'systemd-user'; then
+  exit
+fi
+
+SUBJ="$PAM_TYPE on $(hostname)($(hostname -i)) from ${PAM_USER}"
+MESSAGE="Service: $PAM_SERVICE($PAM_TTY). Login $PAM_USER from ${PAM_RHOST}
+`date` $PAM_RUSER"
+
+send_tg() {
+  wget https://$TG_API/bot$TG_TOKEN/sendMessage -q -O /dev/null --post-data="chat_id=$1&text=$2"
+}
+
+send_mail() {
+  mail -s $SUBJ $1 <<EOF
+  $MESSAGE
+EOF
+}
+
+send_tg $TGID "$SUBJ
+$MESSAGE" &
+
+if test "$PAM_TYPE" = 'close_session'; then
+  exit
+fi
+
+send_mail $EMAIL &
